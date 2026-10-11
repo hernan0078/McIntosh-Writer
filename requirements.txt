@@ -1,0 +1,7 @@
+# tools/ 里的脚本（网页本身不需要）
+fonttools
+uharfbuzz        # apple-check.py、filled-check.py
+numpy            # filled-check.py
+pillow           # filled-check.py
+scikit-image     # filled-check.py
+scipy            # filled-check.py

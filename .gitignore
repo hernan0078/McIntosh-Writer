@@ -1,0 +1,8 @@
+# Apple 的字体和从中提取的数据：每个人在本机生成，不提交
+data/apple/
+*.otf
+*.ttf
+
+venv/
+node_modules/
+.DS_Store

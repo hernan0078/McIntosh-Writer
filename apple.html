@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>McIntosh Writer – Glyph Inspector</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --panel: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --line: #d2d2d7;
+    --accent: #0071e3;
+    --ref: #d2d2d7;
+    --join: #ff3b30;
+    --late: #0071e3;
+    --cmp: #ff9500;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --panel: #1c1c1e;
+      --text: #f5f5f7;
+      --muted: #98989d;
+      --line: #38383a;
+      --accent: #2997ff;
+      --ref: #48484a;
+      --join: #ff453a;
+      --late: #2997ff;
+      --cmp: #ff9f0a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 16px; font-weight: 600; margin: 28px 0 8px; }
+  p.note { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+  .panel { background: var(--panel); border-radius: 14px; padding: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  input[type=text] {
+    flex: 1 1 260px; font: inherit; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  select { font: inherit; font-size: 13px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  label { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+  svg { display: block; width: 100%; height: auto; }
+  .ink { fill: none; stroke: var(--text); stroke-linecap: round; stroke-linejoin: round; }
+  .late { stroke: var(--late); }
+  .dot { fill: var(--late); }
+  .ref { fill: none; stroke: var(--ref); stroke-linecap: round; stroke-linejoin: round; }
+  .joinseg { fill: none; stroke: var(--join); stroke-linecap: round; }
+  .glyphs { color: var(--muted); font-size: 12px; margin-top: 8px; word-break: break-word; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border-radius: 14px; padding: 12px; }
+  .card .title { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; }
+  .err { color: var(--join); }
+  code { word-break: break-all; }
+  .cmpink { fill: none; stroke: var(--cmp); stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
+  .cmpdot { fill: var(--cmp); opacity: .55; }
+  .file { color: var(--accent); cursor: pointer; font-size: 13px; }
+  .file input { display: none; }
+  .row + .row { margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 data-i18n="inspect.title">字形检查</h1>
+  <p class="note" data-i18n-html="inspect.intro"></p>
+
+  <div class="panel">
+    <div class="row">
+      <label><span data-i18n="label.font">字体</span> <select id="src"></select></label>
+      <label><span data-i18n="inspect.compare">叠加对比</span> <select id="cmp"></select></label>
+      <label class="file"><span data-i18n="btn.chooseFont">选取字体…</span><input id="file" type="file" accept=".otf,.ttf" multiple></label>
+      <span id="srcinfo" class="glyphs" style="margin:0"></span>
+    </div>
+    <div class="row">
+      <input id="text" type="text" value="hello world" aria-label="文字" data-i18n-aria-label="inspect.text">
+      <label><input id="joins" type="checkbox" checked> <span data-i18n="inspect.joins">标出字母之间的连笔</span></label>
+      <label><input id="late" type="checkbox" checked> <span data-i18n="inspect.late">用蓝色显示后补的笔画</span></label>
+      <label><span data-i18n="label.ocross">o 的连笔</span>
+        <select id="ocross">
+          <option value="" data-i18n="ocross.over">越过顶部</option>
+          <option value="x" data-i18n="ocross.through">穿过中间</option>
+        </select>
+      </label>
+      <label><span data-i18n="label.pjoin">p 的写法</span>
+        <select id="pjoin">
+          <option value="x" data-i18n="pjoin.one">一笔写完</option>
+          <option value="" data-i18n="pjoin.lift">写完圆后抬笔</option>
+        </select>
+      </label>
+    </div>
+    <div id="stage"></div>
+    <div id="glyphs" class="glyphs"></div>
+  </div>
+
+  <h2 data-i18n="inspect.reference">与 Apple 原版动画对照</h2>
+  <p class="note" data-i18n="inspect.referenceNote"></p>
+  <div id="compare" class="grid"></div>
+</main>
+
+<script src="i18n.js"></script>
+<script src="apple-shaper.js"></script>
+<script src="apple-writer.js"></script>
+<script src="apple-extras.js"></script>
+<script src="apple-font.js"></script>
+<script src="apple-source.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const WORDS = [["en", "hello"], ["es", "hola"], ["de", "hallo"], ["vi", "xin chào"], ["cs", "ahoj"], ["fr", "bonjour"],
+  ["tr", "merhaba"], ["hr", "dobar dan"], ["it", "ciao"], ["sv", "hej"], ["nb", "hei"], ["pl", "cześć"], ["ro", "salut"], ["pt", "olá"]];
+
+const pathD = (segs) => segs.map((c, i) => (i ? "" : `M${c[0].toFixed(1)} ${c[1].toFixed(1)}`) +
+  `C${c.slice(2).map((v) => v.toFixed(1)).join(" ")}`).join("");
+
+// 叠加对比的那份字体：只画线，不标接口
+function drawUnder(L, T = (p) => p) {
+  const tc = (c) => { const p = [0, 2, 4, 6].map((k) => T([c[k], c[k + 1]])); return [...p[0], ...p[1], ...p[2], ...p[3]]; };
+  return L.paths.map((p) => `<path class="cmpink" stroke-width="${p.width * 1.6}" d="${pathD(p.segs.map(tc))}"/>`).join("") +
+    L.dots.map((d) => { const [x, y] = T([d.x, d.y]); return `<circle class="cmpdot" cx="${x}" cy="${y}" r="${d.r * 1.6}"/>`; }).join("");
+}
+
+function drawLayout(L, opts, T = (p) => p, extra = "") {
+  const tc = (c) => { const p = [0, 2, 4, 6].map((k) => T([c[k], c[k + 1]])); return [...p[0], ...p[1], ...p[2], ...p[3]]; };
+  let out = extra;
+  L.paths.forEach((p, i) => {
+    const late = opts.late && p.late;
+    out += `<path class="ink${late ? " late" : ""}" stroke-width="${p.width}" d="${pathD(p.segs.map(tc))}"/>`;
+    if (opts.joins) for (const j of p.joins) out += `<path class="joinseg" stroke-width="${p.width * 0.45}" d="${pathD(p.segs.slice(j.seg, j.seg + (j.count || 1)).map(tc))}"><title>${j.from} → ${j.to}</title></path>`;
+  });
+  for (const d of L.dots) { const [x, y] = T([d.x, d.y]); out += `<circle class="dot" cx="${x}" cy="${y}" r="${d.r}"/>`; }
+  return out;
+}
+
+// 整体缩放 + 平移，让字体拼的贴到原稿上（最近点迭代）
+function icp(F, A) {
+  // 先按包围盒对齐（宽度定缩放，底边对齐），再迭代
+  const bb = (P) => [Math.min(...P.map((p) => p[0])), Math.max(...P.map((p) => p[0])), Math.min(...P.map((p) => p[1])), Math.max(...P.map((p) => p[1]))];
+  const fb = bb(F), ab = bb(A);
+  let s = (ab[1] - ab[0]) / (fb[1] - fb[0]), tx = ab[0] - s * fb[0], ty = ab[3] - s * fb[3];
+  const nearest = (g) => { let b = A[0], bd = Infinity; for (const a of A) { const d = (a[0] - g[0]) ** 2 + (a[1] - g[1]) ** 2; if (d < bd) { bd = d; b = a; } } return [b, Math.sqrt(bd)]; };
+  for (let it = 0; it < 20; it++) {
+    const M = F.map(([x, y]) => nearest([x * s + tx, y * s + ty])[0]);
+    const mf = [0, 1].map((k) => F.reduce((t, p) => t + p[k], 0) / F.length), mm = [0, 1].map((k) => M.reduce((t, p) => t + p[k], 0) / M.length);
+    let num = 0, den = 0;
+    F.forEach((p, i) => { num += (p[0] - mf[0]) * (M[i][0] - mm[0]) + (p[1] - mf[1]) * (M[i][1] - mm[1]); den += (p[0] - mf[0]) ** 2 + (p[1] - mf[1]) ** 2; });
+    s = num / den; tx = mm[0] - s * mf[0]; ty = mm[1] - s * mf[1];
+  }
+  const G = F.map(([x, y]) => [x * s + tx, y * s + ty]);
+  const back = A.map((a) => { let bd = Infinity; for (const g of G) bd = Math.min(bd, (a[0] - g[0]) ** 2 + (a[1] - g[1]) ** 2); return Math.sqrt(bd); });
+  const d = [...G.map((g) => nearest(g)[1]), ...back];
+  return { s, tx, ty, mean: d.reduce((a, b) => a + b, 0) / d.length };
+}
+const bez = (c, t) => { const u = 1 - t; return [u * u * u * c[0] + 3 * u * u * t * c[2] + 3 * u * t * t * c[4] + t * t * t * c[6], u * u * u * c[1] + 3 * u * u * t * c[3] + 3 * u * t * t * c[5] + t * t * t * c[7]]; };
+// 按长度均匀取点（每 10 单位一个），段数多少不影响打分
+const sample = (segs) => segs.flatMap((c) => {
+  const L = Math.hypot(c[2] - c[0], c[3] - c[1]) + Math.hypot(c[4] - c[2], c[5] - c[3]) + Math.hypot(c[6] - c[4], c[7] - c[5]);
+  const n = Math.max(2, Math.ceil(L / 10));
+  return Array.from({ length: n }, (_, k) => bez(c, k / n));
+});
+
+(async () => {
+  const { t } = mwI18n;
+  mwI18n.apply();
+  // 字体来源（data/apple 或者载入的字体文件，见 apple-source.js），主页面也用同一份
+  if (appleSource.servedFromFile) {
+    $("stage").innerHTML = `<div class="err">${appleSource.fileHelp()}</div>`;
+    return;
+  }
+  const sources = await appleSource.open();
+  function fillSelects(prefer) {
+    const list = sources.list();
+    const current = prefer || $("src").value || sources.preferred();
+    $("src").innerHTML = list.map((s) => `<option value="${s.id}">${s.label}</option>`).join("");
+    $("src").value = sources.has(current) ? current : list[0] ? list[0].id : "";
+    const cmp = $("cmp").value || sources.preferred("compare", false) || "";
+    $("cmp").innerHTML = `<option value="">${t("compare.none")}</option>` + list.map((s) => `<option value="${s.id}">${s.label}</option>`).join("");
+    $("cmp").value = sources.has(cmp) ? cmp : "";
+  }
+  fillSelects();
+
+  $("file").addEventListener("change", async (e) => {
+    try {
+      const id = await sources.addFiles(e.target.files);
+      if (id) { sources.remember(id); fillSelects(id); refresh(); }
+    } catch (err) {
+      $("srcinfo").innerHTML = `<span class="err">${err.code === "not-skeletal" ? t("error.notSkeletal") : t("error.load", { reason: err.message })}</span>`;
+    }
+    e.target.value = "";
+  });
+
+  const opts = () => ({ joins: $("joins").checked, late: $("late").checked });
+  const shapeOpts = () => ({ oCross: !!$("ocross").value, pJoin: !!$("pjoin").value });
+  const primary = () => sources.get($("src").value);
+  const second = () => ($("cmp").value && $("cmp").value !== $("src").value ? sources.get($("cmp").value) : null);
+
+  function render() {
+    const S = primary();
+    if (!S) {
+      $("stage").innerHTML = `<p class="err">${t("inspect.noFont")}</p>`;
+      return;
+    }
+    $("srcinfo").textContent = S.info;
+    const text = $("text").value || " ";
+    const shaped = S.shaper.shape(text, shapeOpts());
+    const L = S.writer.layout(shaped);
+    const C = second();
+    const L2 = C ? C.writer.layout(C.shaper.shape(text, shapeOpts())) : null;
+    const b = L.bounds, pad = 80;
+    $("stage").innerHTML = `<svg viewBox="${b.minX - pad} ${Math.min(b.minY, -760) - pad} ${b.maxX - b.minX + pad * 2} ${Math.max(b.maxY, 300) - Math.min(b.minY, -760) + pad * 2}">${L2 ? drawUnder(L2) : ""}${drawLayout(L, opts())}</svg>`;
+    $("glyphs").textContent = shaped.map((g) => g.glyph).join(" ") + (L2 ? t("inspect.compareNote", { name: C.label }) : "");
+  }
+
+  let compareRun = 0;
+  async function compare() {
+    const run = ++compareRun; // 切换选项时重新对照，旧的那轮作废
+    const box = $("compare");
+    box.innerHTML = "";
+    const S = primary();
+    if (!S) return;
+    for (const [lang, word] of WORDS) {
+      let A;
+      try {
+        const data = await fetch(`../SF-Hello/JSON/hello-${lang}.json`).then((r) => { if (!r.ok) throw 0; return r.json(); })
+          .catch(() => fetch(`../SF-Hello-main/JSON/hello-${lang}.json`).then((r) => r.json())); // 下载的 zip 解压出来叫 SF-Hello-main
+        A = data.strokes.map((st) => st.map((s) => [s.p0, s.p1, s.p2, s.p3].flatMap((p) => [p[0], -p[1]])));
+      } catch {
+        box.innerHTML = `<p class="note">${t("inspect.referenceMissing")}</p>`;
+        return;
+      }
+      if (run !== compareRun) return;
+      const L = S.writer.layout(S.shaper.shape(word, shapeOpts()));
+      const r = icp(L.paths.flatMap((p) => sample(p.segs)), A.flatMap((st) => sample(st)));
+      const T = ([x, y]) => [x * r.s + r.tx, y * r.s + r.ty];
+      const C = second();
+      const under = C ? drawUnder(C.writer.layout(C.shaper.shape(word, shapeOpts())), T) : "";
+      const pts = A.flat().flatMap((c) => [[c[0], c[1]], [c[6], c[7]]]);
+      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      const vb = [Math.min(...xs) - 60, Math.min(...ys) - 80, Math.max(...xs) - Math.min(...xs) + 120, Math.max(...ys) - Math.min(...ys) + 160];
+      const ref = A.map((st) => `<path class="ref" stroke-width="40" d="${pathD(st)}"/>`).join("");
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `<div class="title"><span>${word}</span><span>${t("inspect.deviation", { value: r.mean.toFixed(1) })}</span></div><svg viewBox="${vb.join(" ")}">${drawLayout(L, opts(), T, ref + under)}</svg>`;
+      box.appendChild(card);
+    }
+  }
+
+  const refresh = () => { render(); compare(); };
+  $("text").addEventListener("input", render);
+  for (const id of ["ocross", "pjoin", "joins", "late"]) $(id).addEventListener("change", refresh);
+  $("src").addEventListener("change", () => { sources.remember($("src").value); refresh(); });
+  $("cmp").addEventListener("change", () => { sources.remember($("cmp").value, "compare"); refresh(); });
+  refresh();
+})();
+</script>
+</body>
+</html>
