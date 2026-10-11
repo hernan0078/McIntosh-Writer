@@ -19,6 +19,9 @@ already on your Mac.
 
 - Write any text the font supports, including accented Latin, Greek and
   Cyrillic letters, with a stroke-by-stroke animation
+- Enter a line break to write up to two lines of text on separate baselines
+- Center each line against the widest line with the Center Text option
+- Adjust the spacing between lines
 - Letterforms and joins that match Apple’s own rendering
 - Adjust speed and pen weight; the default weight matches the hello screen
 - Choose Light, Dark or Gradient colors
@@ -59,6 +62,11 @@ already on your Mac.
    ```
 
 Your browser remembers the font, so you need to choose it only once.
+
+The text box accepts line breaks. Press Enter to write a second line on a
+separate baseline; both lines are included in the animation and downloaded SVG.
+Use Line Spacing to adjust the distance between the baselines. Export Video
+creates a WebM animation in either Landscape 16:9 or Portrait 9:16.
 
 McIntosh Writer can’t run when you open `index.html` directly from the
 Finder, because browsers don’t let a page opened from a file load the
