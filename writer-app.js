@@ -408,7 +408,10 @@
     recorder.stop();
     let blob = await stopped;
     let extension = format[1];
-    if (extension === "webm") {
+    // Some browsers report an MP4 MIME type while writing VP9 into the
+    // container. Always use the local converter so the downloaded MP4 is
+    // H.264/yuv420p and stays compatible with QuickTime.
+    if (format[1] === "webm" || format[1] === "mp4") {
       $("status").textContent = t("status.videoConverting");
       try {
         const response = await fetch("/convert/mp4", {

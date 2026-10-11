@@ -40,7 +40,9 @@ class Handler(SimpleHTTPRequestHandler):
                 ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
                 "-i", str(source),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-                "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                "-profile:v", "main", "-level:v", "3.1",
+                "-vf", "format=yuv420p", "-r", "60", "-fps_mode", "cfr",
+                "-color_range", "tv", "-movflags", "+faststart",
                 str(output),
             ]
             try:

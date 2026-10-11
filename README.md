@@ -30,7 +30,7 @@ already on your Mac.
 - Write p in one continuous stroke, or lift the pen after its bowl, as the
   font does by default
 - Download an animated SVG for webpages, Keynote or Figma
-- Export smooth 60 fps video as H.264 MP4 (or WebM when the local converter is unavailable) in 16:9 or 9:16
+- Export smooth 60 fps, QuickTime-compatible H.264 MP4 (or WebM when the local converter is unavailable) in 16:9 or 9:16
 - Inspect joins and compare two versions of the font in the Glyph Inspector
 
 ## Requirements
