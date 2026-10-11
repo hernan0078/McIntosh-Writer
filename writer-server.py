@@ -17,6 +17,13 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
+    def end_headers(self):
+        # The local app is edited and relaunched frequently; do not let an
+        # already-open browser keep an older exporter script in its cache.
+        if self.command == "GET":
+            self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def do_POST(self):
         if self.path != "/convert/mp4":
             self.send_error(404)
