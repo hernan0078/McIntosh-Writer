@@ -30,6 +30,7 @@ already on your Mac.
 - Write p in one continuous stroke, or lift the pen after its bowl, as the
   font does by default
 - Download an animated SVG for webpages, Keynote or Figma
+- Export smooth 60 fps video as H.264 MP4 (or WebM when the local converter is unavailable) in 16:9 or 9:16
 - Inspect joins and compare two versions of the font in the Glyph Inspector
 
 ## Requirements
@@ -38,6 +39,7 @@ already on your Mac.
 - A current version of Safari, Chrome or Firefox
 - Python 3 to run a local web server (included with the Xcode Command Line
   Tools)
+- ffmpeg for MP4 video export (optional; WebM export remains available without it)
 
 ## Getting started
 
@@ -66,7 +68,8 @@ Your browser remembers the font, so you need to choose it only once.
 The text box accepts line breaks. Press Enter to write a second line on a
 separate baseline; both lines are included in the animation and downloaded SVG.
 Use Line Spacing to adjust the distance between the baselines. Export Video
-creates a WebM animation in either Landscape 16:9 or Portrait 9:16.
+creates a smooth 60 fps H.264 MP4 in either Landscape 16:9 or Portrait 9:16
+when ffmpeg is installed. It falls back to WebM when the converter is unavailable.
 
 McIntosh Writer can’t run when you open `index.html` directly from the
 Finder, because browsers don’t let a page opened from a file load the

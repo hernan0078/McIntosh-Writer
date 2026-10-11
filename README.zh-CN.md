@@ -18,6 +18,7 @@ McIntosh Writer 用 Apple 开机画面“hello”的手写体书写文字，一�
 - 按 Enter 换行，在不同基线上书写最多两行文字
 - 使用“文字居中”选项，让每一行相对于最长的一行居中
 - 调整多行文字之间的行距
+- 以 60 fps 导出横向 16:9 或竖向 9:16 的 H.264 MP4（转换工具不可用时导出 WebM）
 - 字形和连笔与 Apple 自己的渲染结果一致
 - 调整书写速度和笔画粗细，默认粗细与开机画面相同
 - 选择浅色、深色或渐变配色
@@ -31,6 +32,7 @@ McIntosh Writer 用 Apple 开机画面“hello”的手写体书写文字，一�
 - 装有 macOS 27 的 Mac（系统附带 Macintosh Skeletal 字体）
 - 最新版本的 Safari、Chrome 或 Firefox
 - Python 3，用于启动本地网页服务器（随 Xcode 命令行工具附带）
+- ffmpeg，用于导出 MP4 视频（可选；没有它仍可导出 WebM）
 
 ## 开始使用
 
@@ -54,6 +56,7 @@ McIntosh Writer 用 Apple 开机画面“hello”的手写体书写文字，一�
 
 文字框支持换行。按 Enter 即可在新的基线上书写第二行；两行都会包含在动画和下载的 SVG 中。
 使用“行距”调整基线之间的距离。“导出视频”可以生成横向 16:9 或竖向 9:16 的 WebM 动画。
+如果安装了 ffmpeg，视频会以平滑的 60 fps 导出为 H.264 MP4；否则会保留 WebM 格式。
 
 在“访达”中直接打开 `index.html` 时，McIntosh Writer 无法运行：浏览器不允许从文件打开的网页载入读取字体所需的组件。
 

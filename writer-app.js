@@ -4,6 +4,7 @@
   const SVG_NS = "http://www.w3.org/2000/svg";
   const PEN_SPEED = 3200; // 速度 = 1 时，每秒写多少字体单位（hello 约 3 秒）
   const DOT_COST = 90; // 点一个点相当于写多长
+  const VIDEO_FPS = 60;
   // 字体里存的是笔的半径；Apple 开机画面按 1.55 倍画（Macintosh Skeletal Filled 从渲染程序里读出来的）
   const THEMES = {
     ink: { bg: "#ffffff", ink: "#1d1d1f" },
@@ -298,8 +299,8 @@
     let length = 0;
     let previous = null;
     for (const seg of segs) {
-      for (let i = 0; i <= 24; i++) {
-        const point = cubicPoint(seg, i / 24);
+      for (let i = 0; i <= 48; i++) {
+        const point = cubicPoint(seg, i / 48);
         if (previous) length += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
         points.push(point);
         previous = point;
@@ -342,10 +343,10 @@
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     const candidates = [
+      ["video/mp4", "mp4"],
       ["video/webm;codecs=vp9", "webm"],
       ["video/webm;codecs=vp8", "webm"],
       ["video/webm", "webm"],
-      ["video/mp4", "mp4"],
     ];
     const format = candidates.find(([mime]) => MediaRecorder.isTypeSupported(mime));
     if (!format) {
@@ -389,7 +390,7 @@
     };
 
     $("status").textContent = t("status.videoExporting");
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(VIDEO_FPS);
     const recorder = new MediaRecorder(stream, { mimeType: format[0] });
     const chunks = [];
     const stopped = new Promise((resolve, reject) => {
@@ -398,22 +399,43 @@
       recorder.onstop = () => resolve(new Blob(chunks, { type: format[0] }));
     });
     const duration = time[0].total / (PEN_SPEED * opts.speed);
-    const frames = Math.max(1, Math.ceil(duration * 30));
+    const frames = Math.max(1, Math.ceil(duration * VIDEO_FPS));
     recorder.start();
     for (let frame = 0; frame <= frames; frame++) {
       drawFrame(frame / frames);
-      await new Promise((resolve) => setTimeout(resolve, 1000 / 30));
+      await new Promise((resolve) => setTimeout(resolve, 1000 / VIDEO_FPS));
     }
     recorder.stop();
-    const blob = await stopped;
+    let blob = await stopped;
+    let extension = format[1];
+    if (extension === "webm") {
+      $("status").textContent = t("status.videoConverting");
+      try {
+        const response = await fetch("/convert/mp4", {
+          method: "POST",
+          headers: { "Content-Type": format[0] },
+          body: blob,
+        });
+        if (response.ok) {
+          const converted = await response.blob();
+          if (converted.size) {
+            blob = converted;
+            extension = "mp4";
+          }
+        }
+      } catch {
+        // Keep the WebM recording when the optional local converter is unavailable.
+      }
+    }
     stream.getTracks().forEach((track) => track.stop());
     const name = ($("text").value.trim().replace(/[^\p{L}\p{N}]+/gu, "-") || "hello");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${name}-${ratio.replace(":", "x")}.${format[1]}`;
+    a.download = `${name}-${ratio.replace(":", "x")}.${extension}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    showStatus(state.shaped);
+    if (extension === "webm") $("status").textContent = t("status.videoFallback");
+    else showStatus(state.shaped);
   }
 
   // 调试 / 其他页面用
