@@ -24,12 +24,13 @@ already on your Mac.
 - Adjust the spacing between lines
 - Letterforms and joins that match Apple’s own rendering
 - Adjust speed and pen weight; the default weight matches the hello screen
-- Choose Light, Dark or Gradient colors
+- Choose Light, Dark or Gradient colors, with a white or dark background for gradient lettering
 - Join the letter o over the top, as the font does, or through the middle,
   as Apple’s earlier hello animations did
 - Write p in one continuous stroke, or lift the pen after its bowl, as the
   font does by default
 - Download an animated SVG for webpages, Keynote or Figma
+- Export a static PNG of the finished result in 16:9 or 9:16
 - Export smooth 60 fps, QuickTime-compatible H.264 MP4 (or WebM when the local converter is unavailable) in 16:9 or 9:16
 - Inspect joins and compare two versions of the font in the Glyph Inspector
 
@@ -70,6 +71,9 @@ separate baseline; both lines are included in the animation and downloaded SVG.
 Use Line Spacing to adjust the distance between the baselines. Export Video
 creates a smooth 60 fps H.264 MP4 in either Landscape 16:9 or Portrait 9:16
 when ffmpeg is installed. It falls back to WebM when the converter is unavailable.
+When Gradient is selected, choose a White or Dark background for the colored
+letters. Export Static PNG downloads the fully written final frame in the
+selected video ratio.
 
 McIntosh Writer can’t run when you open `index.html` directly from the
 Finder, because browsers don’t let a page opened from a file load the

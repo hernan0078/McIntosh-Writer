@@ -12,6 +12,12 @@
     color: { bg: "#ffffff", ink: "url(#hw-gradient)" },
   };
   const GRADIENT = ["#ff9f0a", "#ff375f", "#bf5af2", "#5e5ce6", "#0a84ff", "#30d158"];
+  function themeFor(opts) {
+    const theme = THEMES[opts.theme];
+    return opts.theme === "color" && opts.gradientMode === "dark"
+      ? { ...theme, bg: "#000000" }
+      : theme;
+  }
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -68,6 +74,7 @@
       center: $("center").checked,
       lineSpacing: Number($("line-spacing").value),
       theme: $("theme").value,
+      gradientMode: $("gradient-mode").value,
       oCross: !!$("ocross").value,
       pJoin: !!$("pjoin").value,
     };
@@ -172,8 +179,9 @@
     const L = layoutText(text, S, opts);
     const shaped = L.shaped;
     const seq = sequence(L);
-    const theme = THEMES[opts.theme];
+    const theme = themeFor(opts);
     stage.style.background = theme.bg;
+    $("gradient-mode-wrap").hidden = opts.theme !== "color";
     if (!stage.contains(svg)) stage.replaceChildren(svg);
     svg.replaceChildren();
     const b = L.bounds;
@@ -250,7 +258,7 @@
     const total = time[0].total;
     const duration = total / (PEN_SPEED * opts.speed);
     const pct = (c) => (easeInverse(clamp(c / total, 0, 1)) * 100).toFixed(3);
-    const theme = THEMES[opts.theme];
+    const theme = themeFor(opts);
     const css = [], shapes = [];
     seq.forEach((it, i) => {
       const a = pct(time[i].start);
@@ -271,7 +279,9 @@
     const defs = opts.theme === "color"
       ? `<defs><linearGradient id="hw-gradient" gradientUnits="userSpaceOnUse" x1="${vx}" y1="0" x2="${Number(vx) + Number(vw)}" y2="0">${GRADIENT.map((c, i) => `<stop offset="${i / (GRADIENT.length - 1)}" stop-color="${c}"/>`).join("")}</linearGradient></defs>`
       : "";
-    const bg = opts.theme === "night" ? `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="${theme.bg}"/>` : "";
+    const bg = (opts.theme === "night" || (opts.theme === "color" && opts.gradientMode === "dark"))
+      ? `<rect x="${vx}" y="${vy}" width="${vw}" height="${vh}" fill="${theme.bg}"/>`
+      : "";
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}">\n${defs}<style>${css.join("\n")}</style>\n${bg}${shapes.join("\n")}\n</svg>\n`;
   }
 
@@ -330,41 +340,27 @@
     ctx.stroke();
   }
 
-  async function exportVideo() {
-    if (!state || !state.nodes.length) return;
-    if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) {
-      $("status").textContent = t("status.videoUnsupported");
-      return;
-    }
-    const ratio = $("video-ratio").value;
-    const [width, height] = ratio === "9:16" ? [720, 1280] : [1280, 720];
+  function videoDimensions() {
+    return $("video-ratio").value === "9:16" ? [720, 1280] : [1280, 720];
+  }
+
+  function canvasRenderer(currentState, width, height) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
-    const candidates = [
-      ["video/mp4", "mp4"],
-      ["video/webm;codecs=vp9", "webm"],
-      ["video/webm;codecs=vp8", "webm"],
-      ["video/webm", "webm"],
-    ];
-    const format = candidates.find(([mime]) => MediaRecorder.isTypeSupported(mime));
-    if (!format) {
-      $("status").textContent = t("status.videoUnsupported");
-      return;
-    }
-
-    const { seq, time, opts, bounds } = state;
+    const { seq, time, opts, bounds } = currentState;
     const samples = seq.map((it) => it.path ? samplePath(it.path.segs) : null);
     const maxW = Math.max(34, ...seq.filter((it) => it.path).map((it) => it.path.width)) * 2 * opts.weight;
     const pad = maxW / 2 + 40;
     const vx = bounds.minX - pad, vy = bounds.minY - pad;
     const vw = bounds.maxX - bounds.minX + pad * 2, vh = bounds.maxY - bounds.minY + pad * 2;
     const scale = Math.min(width / vw, height / vh);
-    const ink = opts.theme === "color" ? ctx.createLinearGradient(bounds.minX, 0, bounds.maxX, 0) : THEMES[opts.theme].ink;
+    const theme = themeFor(opts);
+    const ink = opts.theme === "color" ? ctx.createLinearGradient(bounds.minX, 0, bounds.maxX, 0) : theme.ink;
     if (opts.theme === "color") GRADIENT.forEach((color, i) => ink.addColorStop(i / (GRADIENT.length - 1), color));
     const drawFrame = (progress) => {
-      ctx.fillStyle = THEMES[opts.theme].bg;
+      ctx.fillStyle = theme.bg;
       ctx.fillRect(0, 0, width, height);
       ctx.save();
       ctx.translate((width - vw * scale) / 2, (height - vh * scale) / 2);
@@ -388,6 +384,52 @@
       });
       ctx.restore();
     };
+    return { canvas, drawFrame };
+  }
+
+  function downloadBlob(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function exportStatic() {
+    if (!state || !state.nodes.length) return;
+    const [width, height] = videoDimensions();
+    const { canvas, drawFrame } = canvasRenderer(state, width, height);
+    drawFrame(1);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return;
+    const ratio = $("video-ratio").value;
+    const name = $("text").value.trim().replace(/[^\p{L}\p{N}]+/gu, "-") || "hello";
+    downloadBlob(blob, `${name}-${ratio.replace(":", "x")}.png`);
+    $("status").textContent = t("status.staticReady");
+  }
+
+  async function exportVideo() {
+    if (!state || !state.nodes.length) return;
+    if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) {
+      $("status").textContent = t("status.videoUnsupported");
+      return;
+    }
+    const ratio = $("video-ratio").value;
+    const [width, height] = videoDimensions();
+    const candidates = [
+      ["video/mp4", "mp4"],
+      ["video/webm;codecs=vp9", "webm"],
+      ["video/webm;codecs=vp8", "webm"],
+      ["video/webm", "webm"],
+    ];
+    const format = candidates.find(([mime]) => MediaRecorder.isTypeSupported(mime));
+    if (!format) {
+      $("status").textContent = t("status.videoUnsupported");
+      return;
+    }
+
+    const { canvas, drawFrame } = canvasRenderer(state, width, height);
+    const { time, opts } = state;
 
     $("status").textContent = t("status.videoExporting");
     const stream = canvas.captureStream(VIDEO_FPS);
@@ -432,11 +474,7 @@
     }
     stream.getTracks().forEach((track) => track.stop());
     const name = ($("text").value.trim().replace(/[^\p{L}\p{N}]+/gu, "-") || "hello");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${name}-${ratio.replace(":", "x")}.${extension}`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    downloadBlob(blob, `${name}-${ratio.replace(":", "x")}.${extension}`);
     if (extension === "webm") $("status").textContent = t("status.videoFallback");
     else showStatus(state.shaped);
   }
@@ -453,16 +491,19 @@
   });
   $("play").addEventListener("click", replay);
   stage.addEventListener("click", (e) => { if (state) replay(); });
-  for (const id of ["weight", "theme", "ocross", "pjoin", "center", "line-spacing"]) {
-    $(id).addEventListener("input", () => {
+  for (const id of ["weight", "theme", "gradient-mode", "ocross", "pjoin", "center", "line-spacing"]) {
+    const refresh = () => {
       $("weightval").textContent = `${Number($("weight").value).toFixed(2)}×`;
       $("line-spacing-val").textContent = `${Number($("line-spacing").value).toFixed(2)}×`;
       rebuild();
       if (state) setProgress(Infinity);
-    });
+    };
+    $(id).addEventListener("input", refresh);
+    if (["theme", "gradient-mode", "ocross", "pjoin"].includes(id)) $(id).addEventListener("change", refresh);
   }
   $("speed").addEventListener("input", () => { if (state) state.opts.speed = Number($("speed").value); });
   $("export").addEventListener("click", exportSvg);
+  $("static-export").addEventListener("click", exportStatic);
   $("video-export").addEventListener("click", exportVideo);
   $("src").addEventListener("change", () => { sources.remember($("src").value); replay(); });
   $("file").addEventListener("change", async (e) => {
